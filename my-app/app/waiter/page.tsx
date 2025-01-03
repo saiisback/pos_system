@@ -17,20 +17,15 @@ interface Order {
 
 const WaiterPage = () => {
   const [tables, setTables] = useState<any[]>([]);
-  const [menu, setMenu] = useState<any[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
-  const [selectedMenuItem, setSelectedMenuItem] = useState<number | null>(null);
-  const [quantity, setQuantity] = useState<number>(1);
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [phoneNumbers, setPhoneNumbers] = useState<Record<number, string>>({});
 
-  // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
-      const [tablesRes, menuRes, ordersRes] = await Promise.all([
+      const [tablesRes, ordersRes] = await Promise.all([
         supabase.from("tables").select("*"),
-        supabase.from("menu_items").select("*"),
         supabase
           .from("orders")
           .select("*, menu_items(name, price)")
@@ -38,98 +33,84 @@ const WaiterPage = () => {
       ]);
 
       setTables(tablesRes.data || []);
-      setMenu(menuRes.data || []);
       setOrders(ordersRes.data || []);
     };
 
     fetchData();
   }, []);
 
+  const handleredirect = (path: string) => {
+    window.location.assign(path);
+  };
+
   const handleOrderSubmit = async () => {
-    if (!selectedTable || !selectedMenuItem || quantity < 1) return;
+    if (!selectedTable || phoneNumber.trim() === "") {
+      alert("Please select a table and provide a phone number.");
+      return;
+    }
 
     const table = tables.find((t) => t.id === selectedTable);
     const currentPhoneNumber = phoneNumbers[selectedTable] || phoneNumber;
-
-    if (!currentPhoneNumber) {
-      alert("Please provide a phone number.");
-      return;
-    }
 
     if (table.status !== "available" && table.phone_number !== currentPhoneNumber) {
       alert("This table is already engaged with a different phone number.");
       return;
     }
 
-    await supabase.from("orders").insert({
-      table_id: selectedTable,
-      menu_item_id: selectedMenuItem,
-      quantity,
+    await supabase.from("tables").update({
+      status: "engaged",
       phone_number: currentPhoneNumber,
-      status: "pending",
-    });
-
-    await supabase
-      .from("tables")
-      .update({ status: "engaged", phone_number: currentPhoneNumber })
-      .eq("id", selectedTable);
+    }).eq("id", selectedTable);
 
     setPhoneNumbers((prev) => ({ ...prev, [selectedTable]: currentPhoneNumber }));
-    alert("Order placed!");
+    alert("Phone number added to the table!");
 
     resetOrderForm();
     refreshOrders();
   };
 
-  const handleClearOrders = async (tableId: number) => {
-    await supabase.from("orders").delete().eq("table_id", tableId);
-    await supabase
-      .from("tables")
-      .update({ status: "available", phone_number: null })
-      .eq("id", tableId);
-
-    setPhoneNumbers((prev) => {
-      const updated = { ...prev };
-      delete updated[tableId];
-      return updated;
-    });
-
-    alert("Orders cleared!");
-    refreshOrders();
-  };
-
-  const handleProceedToBilling = async (tableId: number) => {
+  const handleSendToBilling = async (tableId: number) => {
     const tableOrders = orders.filter((order) => order.table_id === tableId);
     const totalAmount = tableOrders.reduce(
-      (total, order) => total + order.quantity * order.menu_items.price,
+      (total, order) => total + (order.menu_items?.price || 0) * order.quantity,
       0
     );
-
+  
     const phone = tables.find((table) => table.id === tableId)?.phone_number;
     const orderedItems = tableOrders
-      .map((order) => `${order.menu_items.name} x ${order.quantity}`)
+      .map((order) => `${order.menu_items?.name} x ${order.quantity}`)
       .join(", ");
-
+  
+    // Insert billing details
     await supabase.from("billing").insert({
       table_id: tableId,
       phone_number: phone,
       total_amount: totalAmount,
       ordered_items: orderedItems,
     });
-
-    await handleClearOrders(tableId);
+  
+    // Delete the orders for the table
+    await supabase.from("orders").delete().eq("table_id", tableId);
+  
+    // Reset table to "available" and clear the phone number
+    await supabase.from("tables").update({
+      status: "available",
+      phone_number: null,
+    }).eq("id", tableId);
+  
+    // Clear phone number from state
+    setPhoneNumbers((prev) => {
+      const updated = { ...prev };
+      delete updated[tableId];
+      return updated;
+    });
+  
+    // Notify and refresh
     alert(`Bill processed: $${totalAmount.toFixed(2)} with items: ${orderedItems}`);
-  };
-
-  const calculateTotal = (tableId: number) => {
-    return orders
-      .filter((order) => order.table_id === tableId)
-      .reduce((total, order) => total + order.quantity * order.menu_items.price, 0);
+    refreshOrders();
   };
 
   const resetOrderForm = () => {
-    setSelectedMenuItem(null);
-    setQuantity(1);
     setPhoneNumber("");
     setSelectedTable(null);
   };
@@ -149,38 +130,38 @@ const WaiterPage = () => {
         {tables.map((table) => (
           <div key={table.id} className="p-4 border rounded bg-white shadow">
             <h2 className="text-lg font-semibold">Table {table.number}</h2>
-            <p>Phone: {table.phone_number || "N/A"}</p>
+            <p>Phone: {phoneNumbers[table.id] || table.phone_number || "N/A"}</p>
             <div>
               <h3 className="font-bold mt-2">Orders:</h3>
               {orders
                 .filter((order) => order.table_id === table.id)
-                .map((order) => (
-                  <p key={order.id}>
-                    {order.menu_items.name} x {order.quantity} - $
-                    {(order.menu_items.price * order.quantity).toFixed(2)}
-                  </p>
-                ))}
+                .map((order) => {
+                  if (!order.menu_items) return null;
+                  return (
+                    <p key={order.id}>
+                      {order.menu_items.name} x {order.quantity} - $
+                      {(order.menu_items.price * order.quantity).toFixed(2)}
+                    </p>
+                  );
+                })}
             </div>
-            <p className="mt-2">
-              <strong>Total:</strong> ${calculateTotal(table.id).toFixed(2)}
-            </p>
             <button
               className="p-2 bg-green-500 text-white rounded mt-2"
               onClick={() => setSelectedTable(table.id)}
             >
-              Add Order
+              Add Phone Number
             </button>
             <button
               className="p-2 bg-blue-500 text-white rounded mt-2"
-              onClick={() => handleProceedToBilling(table.id)}
+              onClick={() => handleredirect("/menu")}
             >
-              Proceed to Billing
+              Add Order
             </button>
             <button
-              className="p-2 bg-red-500 text-white rounded mt-2"
-              onClick={() => handleClearOrders(table.id)}
+              className="p-2 bg-yellow-500 text-white rounded mt-2"
+              onClick={() => handleSendToBilling(table.id)}
             >
-              Clear Orders
+              Send to Billing
             </button>
           </div>
         ))}
@@ -188,33 +169,15 @@ const WaiterPage = () => {
 
       {selectedTable && (
         <div className="mt-6">
-          <h2 className="text-xl font-semibold">Add Order for Table {selectedTable}</h2>
-          {!phoneNumbers[selectedTable] && (
-            <input
-              type="text"
-              placeholder="Phone Number"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              className="p-2 border rounded mb-2 w-full"
-            />
-          )}
-          <select
-            value={selectedMenuItem || ""}
-            onChange={(e) => setSelectedMenuItem(Number(e.target.value))}
-            className="p-2 border rounded"
-          >
-            <option value="">Select Menu Item</option>
-            {menu.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name} - ${item.price}
-              </option>
-            ))}
-          </select>
+          <h2 className="text-xl font-semibold">
+            Add Phone Number for Table {selectedTable}
+          </h2>
           <input
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            className="p-2 border rounded ml-2 w-20"
+            type="text"
+            placeholder="Phone Number"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className="p-2 border rounded mb-2 w-full"
           />
           <button
             onClick={handleOrderSubmit}
