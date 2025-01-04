@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function MenuPage() {
+function MenuContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tableNum = searchParams.get('table');
@@ -102,7 +102,6 @@ export default function MenuPage() {
     : filteredItems;
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
     <div className="container mx-auto px-4 pb-20">
       {/* Header */}
       <header className="sticky top-0 bg-white z-10 py-4 border-b">
@@ -235,6 +234,17 @@ export default function MenuPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MenuPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading menu...</div>
+      </div>
+    }>
+      <MenuContent />
     </Suspense>
   );
 }

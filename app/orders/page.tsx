@@ -25,7 +25,7 @@ interface Order {
     created_at: string;
 }
 
-export default function OrdersPage() {
+function OrdersContent() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
@@ -114,17 +114,19 @@ export default function OrdersPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+                <div className="min-h-screen bg-gray-900 flex items-center justify-center">
                 <div className="text-white text-xl">Loading...</div>
             </div>
+            
         );
     }
 
     return (
-       <Suspense fallback={<div>Loading...</div>}>
+       
          <div className="min-h-screen bg-gray-900 flex flex-col items-center p-6">
             <div className="w-full max-w-4xl">
                 <div className="flex justify-between items-center mb-6">
+                    
                     <h1 className="text-3xl font-semibold text-white">
                         Orders for Table {tableNumber}
                     </h1>
@@ -221,6 +223,17 @@ export default function OrdersPage() {
                 )}
             </div>
         </div>
-       </Suspense>
+    );
+}
+
+export default function OrdersPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+                <div className="text-white text-xl">Loading...</div>
+            </div>
+        }>
+            <OrdersContent />
+        </Suspense>
     );
 }
