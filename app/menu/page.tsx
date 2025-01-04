@@ -108,7 +108,7 @@ export default function MenuPage() {
           <h1 className="text-2xl font-bold">Menu selection</h1>
           <div className="flex items-center gap-4">
             <div className="px-6 py-3 border rounded-lg text-lg font-semibold min-w-[150px] bg-gray-50">
-              Table {tableNumber}
+              Table: {tableNumber}
             </div>
             <input
               type="search"
