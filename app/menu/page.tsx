@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { menu } from '@/lib/menu';
 import { createClient } from '@supabase/supabase-js';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense } from 'react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -101,6 +102,7 @@ export default function MenuPage() {
     : filteredItems;
 
   return (
+    <Suspense fallback={<div>Loading...</div>}>
     <div className="container mx-auto px-4 pb-20">
       {/* Header */}
       <header className="sticky top-0 bg-white z-10 py-4 border-b">
@@ -233,5 +235,6 @@ export default function MenuPage() {
         </div>
       </div>
     </div>
+    </Suspense>
   );
 }

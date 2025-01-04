@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import { Suspense } from "react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -120,7 +121,8 @@ export default function OrdersPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 flex flex-col items-center p-6">
+       <Suspense fallback={<div>Loading...</div>}>
+         <div className="min-h-screen bg-gray-900 flex flex-col items-center p-6">
             <div className="w-full max-w-4xl">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-semibold text-white">
@@ -219,5 +221,6 @@ export default function OrdersPage() {
                 )}
             </div>
         </div>
+       </Suspense>
     );
 }
