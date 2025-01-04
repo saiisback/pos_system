@@ -105,7 +105,7 @@ export default function MenuPage() {
       {/* Header */}
       <header className="sticky top-0 bg-white z-10 py-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">KADAI MULTICUISINE RESTAURANT</h1>
+          <h1 className="text-2xl font-bold">Menu selection</h1>
           <div className="flex items-center gap-4">
             <div className="px-6 py-3 border rounded-lg text-lg font-semibold min-w-[150px] bg-gray-50">
               Table {tableNumber}
