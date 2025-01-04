@@ -58,7 +58,7 @@ export default function LoginPage() {
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300">Username</label>
+            <label className="block text-sm font-medium text-gray-300">Username:</label>
             <input
               type="text"
               value={username}
@@ -69,7 +69,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300">Password</label>
+            <label className="block text-sm font-medium text-gray-300">Password:</label>
             <input
               type="password"
               value={password}
