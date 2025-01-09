@@ -110,7 +110,7 @@ function MenuContent() {
     const { data, error } = await supabase
       .from('billing')
       .select('*')
-      .eq('phone_number', BigInt(phoneNumber))  // Convert to BigInt since that's how it's stored
+      .eq('phone_number', phoneNumber)
       .eq('status', 'cleared')
       .order('created_at', { ascending: false });
 
@@ -296,7 +296,7 @@ function MenuContent() {
                   .from('billing')
                   .insert({
                     table_number: tableNumber,
-                    phone_number: currentPhoneNumber ? BigInt(currentPhoneNumber) : null,
+                    phone_number: currentPhoneNumber ? String(currentPhoneNumber) : null,
                     orders: formattedItems,
                     total_amount: calculateTotal(),
                     status: 'pending'
