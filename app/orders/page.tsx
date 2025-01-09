@@ -28,31 +28,9 @@ interface Order {
 function OrdersContent() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
-    const [currentPhoneNumber, setCurrentPhoneNumber] = useState<string | null>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
     const tableNumber = searchParams.get('table');
-
-    useEffect(() => {
-        const fetchTableInfo = async () => {
-            if (!tableNumber) return;
-
-            try {
-                const { data, error } = await supabase
-                    .from('tables')
-                    .select('phone_number')
-                    .eq('table_number', tableNumber)
-                    .single();
-
-                if (error) throw error;
-                if (data) setCurrentPhoneNumber(data.phone_number);
-            } catch (error) {
-                console.error('Error fetching table info:', error);
-            }
-        };
-
-        fetchTableInfo();
-    }, [tableNumber]);
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -149,16 +127,9 @@ function OrdersContent() {
             <div className="w-full max-w-4xl">
                 <div className="flex justify-between items-center mb-6">
                     
-                    <div>
-                        <h1 className="text-3xl font-semibold text-white">
-                            Orders for Table {tableNumber}
-                        </h1>
-                        {currentPhoneNumber && (
-                            <p className="text-gray-400 mt-2">
-                                Customer Phone: {currentPhoneNumber}
-                            </p>
-                        )}
-                    </div>
+                    <h1 className="text-3xl font-semibold text-white">
+                        Orders for Table {tableNumber}
+                    </h1>
                     <div className="flex gap-4">
                         <button
                             onClick={() => router.push('/waiter')}

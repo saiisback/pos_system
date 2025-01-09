@@ -19,8 +19,6 @@ function MenuContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [tableNumber, setTableNumber] = useState<number>(Number(tableNum) || 1);
   const [availableTables, setAvailableTables] = useState<number[]>([]);
-  const [pastOrders, setPastOrders] = useState<any[]>([]);
-  const [currentPhoneNumber, setCurrentPhoneNumber] = useState<string | null>(null);
 
   useEffect(() => {
     // Redirect if no table number or table not occupied
@@ -103,56 +101,6 @@ function MenuContent() {
       )
     : filteredItems;
 
-  // Function to fetch past cleared orders
-  const fetchPastOrders = async (phoneNumber: string) => {
-    console.log('Fetching orders for phone:', phoneNumber);
-    
-    const { data, error } = await supabase
-      .from('billing')
-      .select('*')
-      .eq('phone_number', BigInt(phoneNumber))  // Convert to BigInt since that's how it's stored
-      .eq('status', 'cleared')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching past orders:', error);
-      return;
-    }
-
-    console.log('Fetched orders:', data);
-    setPastOrders(data || []);
-  };
-
-  // Add effect to fetch phone number for current table
-  useEffect(() => {
-    const fetchTableInfo = async () => {
-      if (!tableNum) return;
-
-      console.log('Fetching table info for table:', tableNum);
-
-      const { data, error } = await supabase
-        .from('tables')
-        .select('phone_number')
-        .eq('table_number', tableNum)
-        .single();
-
-      if (error) {
-        console.error('Error fetching table info:', error);
-        return;
-      }
-
-      console.log('Table data:', data);
-
-      if (data?.phone_number) {
-        setCurrentPhoneNumber(data.phone_number);
-        // Fetch past orders when we get the phone number
-        fetchPastOrders(data.phone_number);
-      }
-    };
-
-    fetchTableInfo();
-  }, [tableNum]);
-
   return (
     <div className="container mx-auto px-4 pb-20">
       {/* Header */}
@@ -222,38 +170,6 @@ function MenuContent() {
         ))}
       </div>
 
-      {/* Past Orders Section */}
-      {currentPhoneNumber && pastOrders.length > 0 && (
-        <div className="mt-8 mb-20">
-          <h2 className="text-xl font-bold mb-4">Previously Ordered Items</h2>
-          <div className="space-y-4">
-            {pastOrders.map((order) => {
-              // Access the items through order.orders[0].items
-              const items = order.orders[0].items;
-              return (
-                <div key={order.id} className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-2">
-                    {new Date(order.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                  {items.map((item: any, index: number) => (
-                    <div key={index} className="py-1">
-                      <span className="font-medium">{item.name}</span>
-                      <span className="text-gray-600 ml-2">x{item.quantity}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Payment Footer */}
       <div className="fixed bottom-0 left-0 right-0 bg-[#2980b9] text-white p-4">
         <div className="container mx-auto flex justify-between items-center">
@@ -293,13 +209,11 @@ function MenuContent() {
                 }
 
                 const { error } = await supabase
-                  .from('billing')
+                  .from('orders')
                   .insert({
                     table_number: tableNumber,
-                    phone_number: currentPhoneNumber ? BigInt(currentPhoneNumber) : null,
-                    orders: formattedItems,
+                    items: formattedItems,
                     total_amount: calculateTotal(),
-                    status: 'pending'
                   });
 
                 if (error) throw error;

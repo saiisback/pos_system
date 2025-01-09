@@ -26,10 +26,7 @@ export default function WaiterPage() {
     // Fetch tables from database
     useEffect(() => {
         const fetchTables = async () => {
-            const { data, error } = await supabase
-                .from("tables")
-                .select("*")
-                .order('table_number', { ascending: true });
+            const { data, error } = await supabase.from("tables").select("*");
             if (data) setTables(data);
             if (error) console.error("Error fetching tables:", error.message);
         };
