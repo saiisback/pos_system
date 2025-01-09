@@ -19,7 +19,11 @@ interface OrderItem {
 interface Order {
     id: number;
     table_number: number;
-    items: OrderItem[];
+    items: {
+        name: string;
+        quantity: number;
+        price: number;
+    }[];
     total_amount: number;
     status: string;
     created_at: string;
@@ -57,22 +61,62 @@ function OrdersContent() {
     useEffect(() => {
         const fetchOrders = async () => {
             try {
+                setLoading(true);
+                console.log('Fetching orders for table:', tableNumber);
+                
                 const { data, error } = await supabase
                     .from("orders")
                     .select("*")
-                    .eq("table_number", tableNumber)
+                    .eq("table_number", parseInt(tableNumber!))
                     .order('created_at', { ascending: false });
 
-                if (error) throw error;
-                if (data) setOrders(data);
+                if (error) {
+                    console.error("Supabase error:", error);
+                    throw error;
+                }
+                
+                console.log('Raw data from Supabase:', data);
+                
+                if (data) {
+                    const parsedOrders = data.map(order => {
+                        console.log('Processing order:', order);
+                        // Handle both string and JSONB cases
+                        let parsedItems;
+                        try {
+                            parsedItems = typeof order.items === 'string' 
+                                ? JSON.parse(order.items) 
+                                : order.items;
+                            console.log('Parsed items:', parsedItems);
+                        } catch (e) {
+                            console.error('Error parsing items:', e);
+                            parsedItems = [];
+                        }
+                        
+                        return {
+                            ...order,
+                            items: parsedItems || []
+                        };
+                    });
+                    console.log('Final parsed orders:', parsedOrders);
+                    setOrders(parsedOrders);
+                } else {
+                    console.log('No data returned from Supabase');
+                    setOrders([]);
+                }
             } catch (error) {
                 console.error("Error fetching orders:", error);
+                setOrders([]);
             } finally {
                 setLoading(false);
             }
         };
 
-        if (tableNumber) fetchOrders();
+        if (tableNumber) {
+            fetchOrders();
+        } else {
+            setOrders([]);
+            setLoading(false);
+        }
     }, [tableNumber]);
 
     const calculateTotal = (items: OrderItem[]) => {
@@ -134,12 +178,18 @@ function OrdersContent() {
         }
     };
 
+    console.log('Current state:', {
+        orders,
+        loading,
+        tableNumber,
+        currentPhoneNumber
+    });
+
     if (loading) {
         return (
-                <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-                <div className="text-white text-xl">Loading...</div>
+            <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+                <div className="text-white text-xl">Loading orders for table {tableNumber}...</div>
             </div>
-            
         );
     }
 
@@ -217,30 +267,38 @@ function OrdersContent() {
                                 </div>
 
                                 <div className="mt-4">
-                                    <table className="min-w-full">
-                                        <thead>
-                                            <tr className="border-b">
-                                                <th className="text-left py-2 text-[#2980b9]">Item</th>
-                                                <th className="text-center py-2 text-[#2980b9]">Quantity</th>
-                                                <th className="text-right py-2 text-[#2980b9]">Price</th>
-                                                <th className="text-right py-2 text-[#2980b9]">Subtotal</th>
+                                    <table className="w-full">
+                                        <thead className="text-sm text-gray-600 border-b">
+                                            <tr>
+                                                <th className="text-left py-2">Item</th>
+                                                <th className="text-center py-2">Qty</th>
+                                                <th className="text-right py-2">Price</th>
+                                                <th className="text-right py-2">Total</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {order.items.map((item, index) => (
-                                                <tr key={index} className="border-b hover:bg-blue-50">
-                                                    <td className="py-2">{item.name}</td>
-                                                    <td className="text-center py-2">{item.quantity}</td>
-                                                    <td className="text-right py-2">₹{item.price}</td>
-                                                    <td className="text-right py-2 font-medium text-[#2980b9]">
-                                                        ₹{item.price * item.quantity}
+                                            {order.items && Array.isArray(order.items) ? (
+                                                order.items.map((item: any, idx: number) => (
+                                                    <tr key={idx} className="border-b">
+                                                        <td className="py-2">{item?.name || 'Unknown Item'}</td>
+                                                        <td className="text-center">{item?.quantity || 0}</td>
+                                                        <td className="text-right">₹{item?.price || 0}</td>
+                                                        <td className="text-right">
+                                                            ₹{((item?.price || 0) * (item?.quantity || 0)).toFixed(2)}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={4} className="text-center py-2 text-gray-500">
+                                                        No items found in this order
                                                     </td>
                                                 </tr>
-                                            ))}
-                                            <tr className="font-semibold bg-blue-50">
+                                            )}
+                                            <tr className="font-semibold bg-gray-50">
                                                 <td colSpan={3} className="text-right py-2">Total:</td>
                                                 <td className="text-right py-2 text-[#2980b9]">
-                                                    ₹{calculateTotal(order.items)}
+                                                    ₹{order.total_amount?.toFixed(2) || '0.00'}
                                                 </td>
                                             </tr>
                                         </tbody>

@@ -11,8 +11,8 @@ const supabase = createClient(
 interface BillingRecord {
     id: number;
     table_number: number;
-    phone_number: string;
-    orders: any[];
+    phone_number: string | null;
+    orders: string[];
     total_amount: number;
     created_at: string;
     status: 'pending' | 'cleared';
@@ -29,6 +29,7 @@ export default function BillingPage() {
 
     const fetchBillingRecords = async () => {
         try {
+            console.log('Fetching billing records for status:', activeTab);
             const { data, error } = await supabase
                 .from('billing')
                 .select('*')
@@ -36,7 +37,43 @@ export default function BillingPage() {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            if (data) setBillingRecords(data);
+            
+            if (data) {
+                console.log('Raw billing data:', JSON.stringify(data, null, 2));
+                const formattedData = data.map(record => {
+                    console.log('Processing record:', record);
+                    try {
+                        // Handle orders array more carefully
+                        let processedOrders = [];
+                        if (record.orders && Array.isArray(record.orders)) {
+                            processedOrders = record.orders.map(order => {
+                                try {
+                                    // If order is a string, parse it
+                                    if (typeof order === 'string') {
+                                        return JSON.parse(order);
+                                    }
+                                    return order;
+                                } catch (e) {
+                                    console.error('Error parsing individual order:', order, e);
+                                    return null;
+                                }
+                            }).filter(Boolean); // Remove any null values
+                        }
+
+                        return {
+                            ...record,
+                            phone_number: record.phone_number ? String(record.phone_number) : null,
+                            orders: processedOrders
+                        };
+                    } catch (e) {
+                        console.error('Error processing record:', record, e);
+                        return record;
+                    }
+                });
+                
+                console.log('Formatted billing data:', formattedData);
+                setBillingRecords(formattedData);
+            }
         } catch (error) {
             console.error('Error fetching billing records:', error);
         } finally {
@@ -137,17 +174,40 @@ export default function BillingPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {record.orders.flatMap(order => 
-                                            order.items.map((item: any, idx: number) => (
-                                                <tr key={`${order.id}-${idx}`} className="border-b">
-                                                    <td className="py-2">{item.name}</td>
-                                                    <td className="text-center">{item.quantity}</td>
-                                                    <td className="text-right">₹{item.price}</td>
-                                                    <td className="text-right">
-                                                        ₹{(item.price * item.quantity).toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                            ))
+                                        {record.orders && Array.isArray(record.orders) && record.orders.length > 0 ? (
+                                            record.orders.map((order, orderIndex) => {
+                                                if (!order) return null;
+                                                
+                                                let items = [];
+                                                try {
+                                                    if (typeof order === 'string') {
+                                                        const parsedOrder = JSON.parse(order);
+                                                        items = parsedOrder.items || [];
+                                                    } else if (order.items) {
+                                                        items = order.items;
+                                                    }
+                                                } catch (e) {
+                                                    console.error('Error parsing order:', e);
+                                                    return null;
+                                                }
+
+                                                return items.map((item: any, itemIndex: number) => (
+                                                    <tr key={`${orderIndex}-${itemIndex}`} className="border-b">
+                                                        <td className="py-2">{item?.name || 'Unknown'}</td>
+                                                        <td className="text-center">{item?.quantity || 0}</td>
+                                                        <td className="text-right">₹{item?.price || 0}</td>
+                                                        <td className="text-right">
+                                                            ₹{((item?.price || 0) * (item?.quantity || 0)).toFixed(2)}
+                                                        </td>
+                                                    </tr>
+                                                ));
+                                            }).filter(Boolean).flat()
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={4} className="text-center py-2 text-gray-500">
+                                                    No items in this bill
+                                                </td>
+                                            </tr>
                                         )}
                                         <tr className="font-semibold bg-gray-50">
                                             <td colSpan={3} className="text-right py-2">Grand Total:</td>

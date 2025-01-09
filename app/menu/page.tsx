@@ -293,11 +293,10 @@ function MenuContent() {
                 }
 
                 const { error } = await supabase
-                  .from('billing')
+                  .from('orders')
                   .insert({
                     table_number: tableNumber,
-                    phone_number: currentPhoneNumber ? String(currentPhoneNumber) : null,
-                    orders: formattedItems,
+                    items: formattedItems,
                     total_amount: calculateTotal(),
                     status: 'pending'
                   });
